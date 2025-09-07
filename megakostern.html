@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>AI-Костёр 🔥</title>
+  <style>
+    :root{ --bg:#0b0e14; --muted:#98a2b3; }
+    *{box-sizing:border-box}
+    html,body{ height:100%; }
+    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;
+          background:#0b0e14; min-height:100vh; color:#e5e7eb; }
+    .container{ width:min(1100px,100%); margin:0 auto; display:grid; grid-template-columns:360px 1fr; gap:16px; padding:16px; }
+    .panel,.scene{ background:rgba(17,21,29,0.85); backdrop-filter:blur(6px); border:1px solid #263043; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.35); }
+    .panel{ padding:18px; }
+    .scene{ position:relative; aspect-ratio:1/1; min-height:520px; overflow:hidden; }
+    textarea{ width:100%; min-height:120px; resize:vertical; padding:10px; background:#0f1420; border:1px solid #2e3a51; border-radius:10px; color:#e5e7eb; font-size:14px;}
+    button{border:0; border-radius:10px; padding:10px 14px; font-weight:700; cursor:pointer; margin-top:6px; margin-right:6px;}
+    .start{ background:#10b981; color:#052e2b; }
+    .stop{ background:#ef4444; color:#fff; }
+    .reset{ background:#334155; color:#e5e7eb; }
+    .names-circle{ position:absolute; inset:0; margin:auto; width:100%; height:100%; z-index:6; pointer-events:none; }
+    .name-pill{ position:absolute; transform:translate(-50%,-50%); padding:6px 10px; border-radius:999px; border:1px solid #2e3a51; background:rgba(18,24,38,.85); user-select:none; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,.25); transition:transform .08s ease; pointer-events:auto; color: #e5e7eb; }
+    .name-pill:hover{ transform:translate(-50%,-50%) scale(1.03); }
+    /* класс для имён, в которые попадает дым */
+    .name-active{ border-color:#ffd166; background:rgba(255,213,102,.18); color:#fff; }
+    .ground{ position:absolute; left:50%; top:62%; width:64%; height:30%; transform:translateX(-50%); background:radial-gradient(60% 60% at 50% 100%, rgba(255,170,50,.25), transparent 60%); filter:blur(18px); z-index:1;}
+    .fire-wrap{ position:absolute; left:50%; top:60%; transform:translate(-50%,-50%); width:180px; height:auto; z-index:3;}
+    .logs{ position:absolute; bottom:-6px; left:50%; transform:translateX(-50%); width:180px; height:50px;}
+    .log{ position:absolute; bottom:0; width:120px; height:24px; border-radius:12px; background:linear-gradient(#5a3f2e,#3e2c21);}
+    .log.left{ left:8px; transform:rotate(18deg);} .log.right{ right:8px; transform:rotate(-18deg);}
+    .flame{ position:relative; width:140px; height:160px; margin:0 auto; filter:drop-shadow(0 0 40px rgba(255,140,0,.5)); display:none;}
+    .flame span{ position:absolute; bottom:0; left:50%; transform:translateX(-50%); border-radius:50% 50% 45% 45%; animation:flicker 1s infinite ease-in-out alternate; mix-blend-mode:screen;}
+    .f1{ width:120px; height:140px; background:radial-gradient(circle at 50% 70%, #fb8500 0%, rgba(251,133,0,0) 70%); animation-duration:1.4s;}
+    .f2{ width:90px; height:110px; background:radial-gradient(circle at 50% 70%, #ffd166 0%, rgba(255,209,102,0) 70%); animation-duration:1.1s;}
+    .f3{ width:60px; height:90px; background:radial-gradient(circle at 50% 70%, #fff6cc 0%, rgba(255,255,255,0) 70%); animation-duration:0.9s;}
+    @keyframes flicker{ 0%{ transform:translateX(-50%) scale(1) rotate(-2deg); opacity:1;} 50%{ transform:translateX(-50%) scale(1.05) rotate(2deg); opacity:0.8;} 100%{ transform:translateX(-50%) scale(0.95) rotate(-1deg); opacity:1;} }
+    canvas#smokeCanvas{ position:absolute; inset:0; width:100%; height:100%; z-index:4; pointer-events:none;}
+    .smoke-label{ position:absolute; left:12px; top:12px; right:12px; text-align:center; z-index:7;}
+    .stars{ position:absolute; inset:0; background:transparent; z-index:0; pointer-events:none;}
+    .evening-award{ margin-top:20px; padding:12px; border-radius:12px; background:rgba(30,40,55,0.85); border:1px solid #2e3a51; font-weight:bold;}
+    .tooltip{position:fixed; left:0; top:0; transform:translate(-50%,-120%) scale(.96); background:rgba(15,20,32,.96); padding:6px 10px; border-radius:8px; font-size:12px; color:#e5e7eb; border:1px solid #2e3a51; box-shadow:0 6px 18px rgba(0,0,0,.35); pointer-events:none; opacity:0; transition:opacity .12s ease, transform .12s ease; z-index:9999;}
+    .tooltip.show{ opacity:1; transform:translate(-50%,-120%) scale(1); }
+    .tooltip::after{ content:""; position:absolute; left:50%; bottom:-6px; transform:translateX(-50%); border:6px solid transparent; border-top-color:#2e3a51; }
+
+    /* 📱 адаптив для телефонов */
+    @media (max-width: 768px) {
+      .container { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+      .scene { width: 100%; height: auto; min-height: 420px; aspect-ratio: auto; }
+    }
+  
+@media (max-width: 768px) {
+  .fire-wrap {
+    width: 120px; /* smaller fire for mobile */
+  }
+  .flame {
+    width: 100px;
+    height: 120px;
+  }
+  .f1 { width: 90px; height: 110px; }
+  .f2 { width: 70px; height: 90px; }
+  .f3 { width: 50px; height: 70px; }
+}
+
+
+@media (max-width: 768px) {
+  .names-circle {
+    transform: scale(1.2);
+  }
+}
+
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="panel">
+      <h1>AI-Костёр 🔥</h1>
+      <textarea id="namesInput" placeholder="Введи имена по одному на строке"></textarea><br>
+      <button id="toggleBtn" class="start" type="button">Пуск</button>
+      <button id="resetBtn" class="reset" type="button">Сбросить</button>
+      <div class="evening-award" id="eveningAward">🏆 Самая красивая девушка вечера: —</div>
+    </div>
+    <div class="scene" id="scene">
+      <div class="stars" id="stars"></div>
+      <div class="names-circle" id="namesCircle"></div>
+      <div class="ground"></div>
+      <div class="fire-wrap" id="fire">
+        <div class="flame" id="flame">
+          <span class="f1"></span>
+          <span class="f2"></span>
+          <span class="f3"></span>
+        </div>
+        <div class="logs"><div class="log left"></div><div class="log right"></div></div>
+      </div>
+      <canvas id="smokeCanvas"></canvas>
+      <div class="smoke-label" id="smokeLabel">Дышите</div>
+    </div>
+  </div>
+  <div id="tooltip" class="tooltip" aria-hidden="true"></div>
+
+  <script>
+  (function(){
+    "use strict";
+    // --- DOM
+    var namesInput=document.getElementById('namesInput');
+    var namesCircle=document.getElementById('namesCircle');
+    var smokeLabel=document.getElementById('smokeLabel');
+    var eveningAward=document.getElementById('eveningAward');
+    var toggleBtn=document.getElementById('toggleBtn');
+    var resetBtn=document.getElementById('resetBtn');
+    var scene=document.getElementById('scene');
+    var canvas=document.getElementById('smokeCanvas');
+    var ctx=canvas.getContext('2d');
+    var tooltip=document.getElementById('tooltip');
+    var flame=document.getElementById('flame');
+
+    // --- State
+    var names=[];               // array of names (strings)
+    var times={};               // accumulated times per name
+    var running=false;
+    var lastUpdate=Date.now();
+    var engineTimer=null;
+    var uiTimer=null;
+    var tickTimer=null;         // used to schedule random-angle changes
+    var particles=[];           // smoke particles
+    var nameMeta=[];            // [{name, x, y, el, radius}]
+    var columns=[];             // smoke columns: [{angle, targetIndex?}]
+    var hitNamesSet=new Set();
+    var hitHistory={}; // {name:[timestamps]}  // names hit by particles during current frame
+    var activeNamesSet=new Set(); // union of hitNames and targeted names (used for highlighting & label)
+    var randomAngleChangeTimer=null;
+
+    // --- Helpers
+    function pad2(n){ n=Math.floor(n); return (n<10?'0':'')+n; }
+
+    function sizeSceneToCanvas(){
+      var w=scene.clientWidth, h=scene.clientHeight;
+      if (w>0 && h>0){
+        var dpr = Math.max(1, Math.min(2, window.devicePixelRatio||1));
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+        canvas.style.width = w+'px';
+        canvas.style.height = h+'px';
+        ctx.setTransform(dpr,0,0,dpr,0,0);
+      }
+    }
+
+    function getCenter(){ return {x:scene.clientWidth/2, y:scene.clientHeight*0.55}; }
+    function getRingRadius(){ return Math.min(scene.clientWidth,scene.clientHeight)*0.36; }
+
+    function formatTime(t){
+      if(t>=60){ var m=Math.floor(t/60); var s=Math.floor(t%60); return m+':'+pad2(s); }
+      return t.toFixed(1)+' сек';
+    }
+
+    function clearNode(node){ while(node.firstChild){ node.removeChild(node.firstChild);} }
+
+    function formatNameList(arr){
+      if(!arr || arr.length===0) return '';
+      if(arr.length===1) return arr[0];
+      if(arr.length===2) return arr[0] + ' и ' + arr[1];
+      var copy = arr.slice();
+      var last = copy.pop();
+      return copy.join(', ') + ' и ' + last;
+    }
+
+    // --- Render names and compute meta
+    function renderNames(){
+      clearNode(namesCircle);
+      nameMeta = [];
+      var c=getCenter(); var R=getRingRadius(); var n = Math.max(1, names.length);
+      for(var i=0;i<names.length;i++){
+        var angle=(i/n)*Math.PI*2-Math.PI/2;
+        var x = c.x + R*Math.cos(angle);
+        var y = c.y + R*Math.sin(angle);
+        var div=document.createElement('div');
+        div.className='name-pill';
+        div.textContent=names[i];
+        div.style.left = x + 'px';
+        div.style.top = y + 'px';
+        (function(name, el){
+          el.addEventListener('mouseenter', function(){
+            showTooltipForElement(el, name);
+            if(!tooltip._timer){
+              tooltip._timer = setInterval(function(){
+                updateTooltipForElement(el, name);
+              }, 100);
+            }
+          }, false);
+          el.addEventListener('mouseleave', function(){
+            hideTooltip();
+            if(tooltip._timer){ clearInterval(tooltip._timer); tooltip._timer = null; }
+          }, false);
+        })(names[i], div);
+        namesCircle.appendChild(div);
+
+        // compute center and radius (note: left/top used here are already the center because of translate(-50%,-50%))
+        var cx = parseFloat(div.style.left) || x;
+        var cy = parseFloat(div.style.top) || y;
+        var radius = Math.max(div.offsetWidth, div.offsetHeight) * 0.5 + 8; // collision radius padding
+        nameMeta.push({ name: names[i], x: cx, y: cy, el: div, radius: radius });
+      }
+
+      // After re-rendering names we must refresh columns because positions (angles) might change on resize
+      refreshColumns();
+    }
+
+    // --- Update names list from input
+    function updateNames(){
+      var raw = namesInput.value || "";
+      var arr = raw.split(/\r?\n/);
+      var out = [];
+      for(var i=0;i<arr.length;i++){
+        var s = arr[i].replace(/^\\s+|\\s+$/g,'');
+        if(s){ out.push(s); }
+      }
+      names = out;
+      // preserve times for existing names
+      var newTimes = {};
+      for(var i=0;i<names.length;i++){ var nm=names[i]; newTimes[nm] = (times[nm] !== undefined) ? times[nm] : 0; }
+      times = newTimes;
+      // 🔧 fix: очистим историю попаданий от временных имен (стадий ввода)
+      (function(){
+        var currSet = new Set(names);
+        for(var key in hitHistory){
+          if(Object.prototype.hasOwnProperty.call(hitHistory,key) && !currSet.has(key)){
+            delete hitHistory[key];
+          }
+        }
+        // пересекаем текущие попадания с актуальными именами
+        var filtered = new Set();
+        hitNamesSet.forEach(function(nm){ if(currSet.has(nm)) filtered.add(nm); });
+        hitNamesSet = filtered;
+      })();
+      renderNames();
+      // ensure the UI is consistent
+      updateSmokeLabel();
+      updateEveningAward();
+    }
+
+    // --- Column logic (decide how many smoke columns and where they point)
+    function indicesOfNiyazes(){
+      var res=[];
+      for(var i=0;i<names.length;i++){
+        try{ if(String(names[i]).toLowerCase() === 'нияз') res.push(i); }catch(e){}
+      }
+      return res;
+    }
+
+    function angleToNameIndex(idx){
+      if(!nameMeta[idx]) return Math.random()*Math.PI*2 - Math.PI;
+      var c = getCenter();
+      var dx = nameMeta[idx].x - c.x;
+      var dy = nameMeta[idx].y - c.y;
+      return Math.atan2(dy, dx);
+    }
+
+    function refreshColumns(){
+      // Build columns[] according to cases:
+      // 1) no Нияз => single random column (angle may change periodically)
+      // 2) one Нияз => single column aimed at that Нияз
+      // 3) >1 Нияз => one column per Нияз aimed at each
+      // 4) all names are Ниязы => blow in all directions (we implement as many columns around the circle)
+      columns = [];
+      var niyazIdx = indicesOfNiyazes();
+      if(names.length === 0){
+        columns = [];
+      } else if(niyazIdx.length === 0){
+        // case 1: single random column
+        if(columns.length>0 && columns[0].mode==='random'){
+          // сохраняем прежний угол
+          var angle = columns[0].angle;
+          columns = [{ angle: angle, mode: 'random' }];
+        } else {
+          var angle = Math.random()*Math.PI*2 - Math.PI;
+          columns = [{ angle: angle, mode: 'random' }];
+        }
+        scheduleRandomAngleChange();
+      } else if(niyazIdx.length === names.length){
+        // case 4: all names are Niyaz -> many directions simultaneously
+        var nCols = Math.max(12, names.length);
+        for(var j=0;j<nCols;j++){
+          var ang = (j / nCols) * Math.PI*2;
+          columns.push({ angle: ang, mode: 'all-directions' });
+        }
+        cancelRandomAngleChange();
+      } else if(niyazIdx.length === 1){
+        // case 2: single Niyaz -> center smoke on it
+        var ang2 = angleToNameIndex(niyazIdx[0]);
+        columns.push({ angle: ang2, mode: 'to-niyaz', target: niyazIdx[0] });
+        cancelRandomAngleChange();
+      } else {
+        // case 3: multiple Niyaz -> split into n columns, each aimed at its Niyaz
+        for(var k=0;k<niyazIdx.length;k++){
+          var idx = niyazIdx[k];
+          var ang3 = angleToNameIndex(idx);
+          columns.push({ angle: ang3, mode: 'to-niyaz', target: idx });
+        }
+        cancelRandomAngleChange();
+      }
+    }
+
+    function scheduleRandomAngleChange(){
+      cancelRandomAngleChange();
+      if(!running) return;
+      randomAngleChangeTimer = setTimeout(function(){
+        if(columns.length>0 && columns[0] && columns[0].mode === 'random'){
+          columns[0].angle = Math.random()*Math.PI*2 - Math.PI;
+        }
+        scheduleRandomAngleChange();
+      }, 10000 + Math.random()*30000);
+    }
+    function cancelRandomAngleChange(){
+      if(randomAngleChangeTimer){ clearTimeout(randomAngleChangeTimer); randomAngleChangeTimer = null; }
+    }
+
+    // --- Tooltip helpers
+    function showTooltipForElement(el,name){ updateTooltipForElement(el,name); tooltip.classList.add('show'); tooltip.setAttribute('aria-hidden','false'); }
+    function updateTooltipForElement(el,name){
+      var rect=el.getBoundingClientRect();
+      tooltip.textContent = name+' — '+formatTime(accumulatedTime(name));
+      tooltip.style.left=(rect.left+rect.width/2)+'px';
+      tooltip.style.top=(rect.top-8)+'px';
+    }
+    function hideTooltip(){ tooltip.classList.remove('show'); tooltip.setAttribute('aria-hidden','true'); }
+
+    function accumulatedTime(name){
+      var t=times[name]||0;
+      return t;
+    }
+
+    // --- Particles spawn
+    function spawnParticleAtAngle(angle){
+      var c=getCenter();
+      var angleVariation=(Math.random()-0.5)*0.8;
+      var speed = 0.6 + Math.random()*1.6;
+      var vx = Math.cos(angle + angleVariation) * speed;
+      var vy = Math.sin(angle + angleVariation) * speed - (0.6 + Math.random()*0.2);
+      particles.push({
+        x: c.x,
+        y: c.y,
+        vx: vx,
+        vy: vy,
+        size: 10 + Math.random()*26,
+        life: 140 + Math.random()*120,
+        alpha: 1
+      });
+    }
+
+    // --- Determine whether a given name is currently targeted by any column (geometric check)
+    function computeTargetedSet(){
+      var targeted = new Set();
+      if(!nameMeta || nameMeta.length===0 || !columns || columns.length===0) return targeted;
+      var c = getCenter();
+      for(var i=0;i<nameMeta.length;i++){
+        var nm = nameMeta[i];
+        var px = nm.x - c.x, py = nm.y - c.y;
+        for(var j=0;j<columns.length;j++){
+          var col = columns[j];
+          var ang = col.angle;
+          var dx = Math.cos(ang), dy = Math.sin(ang);
+          // dot product to ensure name is in front of the ray
+          var dot = px*dx + py*dy;
+          if(dot <= 0) continue; // behind the fire
+          // perpendicular distance from point to ray equals |px*dy - py*dx| (unit direction)
+          var perp = Math.abs(px*dy - py*dx);
+          var margin = Math.max(10, nm.radius * 0.6); // some allowance
+          if(perp <= nm.radius + margin){
+            targeted.add(nm.name);
+            break;
+          }
+        }
+      }
+      return targeted;
+    }
+
+    // --- Animation loop for smoke + collision detection
+    function animateSmoke(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+
+      // Spawn particles according to columns
+      if(running && columns && columns.length>0){
+        var baseSpawnChance = 0.55;
+        var spawnChance = Math.min(0.7, baseSpawnChance * (1 / Math.max(1, columns.length*0.6)));
+        for(var ci=0; ci<columns.length; ci++){
+          if(Math.random() < spawnChance) spawnParticleAtAngle(columns[ci].angle);
+        }
+      } else if(running && columns.length===0){
+        if(Math.random()<0.5) spawnParticleAtAngle(Math.random()*Math.PI*2 - Math.PI);
+      }
+
+      // advance particles & render
+      for(var i=0;i<particles.length;i++){
+        var p=particles[i];
+        p.x += p.vx + (Math.random()-0.5)*0.3;
+        p.y += p.vy;
+        p.life--;
+        p.alpha = Math.max(0, p.life/260);
+        var g = ctx.createRadialGradient(p.x, p.y, p.size*0.15, p.x, p.y, p.size);
+        g.addColorStop(0, 'rgba(60,60,60,'+ (p.alpha) +')');
+        g.addColorStop(0.5, 'rgba(150,150,150,'+ (p.alpha*0.6) +')');
+        g.addColorStop(1, 'rgba(220,220,220,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+        ctx.fill();
+      }
+      // remove dead
+      var alive=[];
+      for(i=0;i<particles.length;i++){ if(particles[i].life>0) alive.push(particles[i]); }
+      particles = alive;
+
+      // Collision detection: determine which names are hit this frame (by particles)
+      var hitThisFrame = new Set();
+      if(nameMeta.length>0 && particles.length>0){
+        for(i=0;i<particles.length;i++){
+          var p = particles[i];
+          for(var m=0;m<nameMeta.length;m++){
+            var nm = nameMeta[m];
+            var dx = p.x - nm.x;
+            var dy = p.y - nm.y;
+            var distSq = dx*dx + dy*dy;
+            var thresh = (nm.radius + p.size*0.25);
+            if(distSq <= thresh*thresh){
+              hitThisFrame.add(nm.name);
+            }
+          }
+        }
+      }
+
+      // Determine targeted names by geometric ray check
+      var targetedNow = computeTargetedSet();
+
+      // Build active set: union of hitThisFrame and targetedNow
+      var activeNow = new Set(targetedNow);
+      hitThisFrame.forEach(function(n){ activeNow.add(n); });
+
+      // apply hit/active classes to DOM: use activeNow for visual highlight
+      for(i=0;i<nameMeta.length;i++){
+        var el = nameMeta[i].el;
+        if(activeNow.has(nameMeta[i].name)) el.classList.add('name-active');
+        else el.classList.remove('name-active');
+      }
+
+      // store hitNamesSet for engine timer
+      hitNamesSet = hitThisFrame;
+
+      // обновляем историю попаданий
+      var nowTs = Date.now()/1000;
+      hitThisFrame.forEach(function(nm){
+        if(!hitHistory[nm]) hitHistory[nm]=[];
+        hitHistory[nm].push(nowTs);
+      });
+
+      // очищаем старые записи и решаем активность
+      activeNamesSet = new Set();
+      var namesSet = new Set(names);
+      for(var name in hitHistory){
+        if(!Object.prototype.hasOwnProperty.call(hitHistory,name)) continue;
+        // игнорируем/удаляем записи по именам, которых уже нет в текущем списке
+        if(!namesSet.has(name)){ delete hitHistory[name]; continue; }
+        // убираем старые >2с
+        hitHistory[name] = hitHistory[name].filter(function(t){return nowTs-t <= 2;});
+        var hits = hitHistory[name].length;
+        if(hits >= 2 && (nowTs - hitHistory[name][hits-1]) <= 1.5){
+          activeNamesSet.add(name);
+        }
+      }
+
+      // apply hit/active classes to DOM
+      for(i=0;i<nameMeta.length;i++){
+        var el = nameMeta[i].el;
+        if(activeNamesSet.has(nameMeta[i].name)) el.classList.add('name-active');
+        else el.classList.remove('name-active');
+      }
+
+      // Update smoke label text according to rules
+      updateSmokeLabel();
+
+      window.requestAnimationFrame(animateSmoke);
+    }
+
+    // --- Update smokeLabel text per user rules (uses activeNamesSet)
+    function updateSmokeLabel(){
+      var hasNiyaz = names.some(n => String(n).toLowerCase() === 'нияз');
+      if(hasNiyaz){
+        smokeLabel.textContent = '🔥 Самая красивая девушка на костре - Нияз';
+        return;
+      }
+      var arr = Array.from(activeNamesSet);
+      if(arr.length === 0){
+        smokeLabel.textContent = 'Дышите';
+      } else if(arr.length === 1){
+        smokeLabel.textContent = '🔥 Самая красивая девушка на костре - ' + arr[0];
+      } else {
+        smokeLabel.textContent = '🔥 Самые красивые девушки на костре - ' + formatNameList(arr);
+      }
+    }
+
+    // --- Evening award (apply same Niyaz override: if any Niyaz present -> Нияз; otherwise max by time)
+    function updateEveningAward(){
+      var hasNiyaz = names.some(n => String(n).toLowerCase() === 'нияз');
+      if(hasNiyaz){
+        eveningAward.textContent = '🏆 Самая красивая девушка вечера: Нияз';
+        return;
+      }
+      var bestName='—', bestTime=0;
+      for(var name in times){
+        if(!Object.prototype.hasOwnProperty.call(times, name)) continue;
+        var val = times[name] || 0;
+        if(val > bestTime){ bestTime = val; bestName = name; }
+      }
+      eveningAward.textContent = '🏆 Самая красивая девушка вечера: '+bestName;
+    }
+
+    // --- Engine timers (accumulate time while names are hit - only when actual particles hit)
+    function startEngine(){
+      if(engineTimer) return;
+      lastUpdate = Date.now();
+      engineTimer = setInterval(function(){
+        var now = Date.now();
+        var dt = (now - lastUpdate)/1000;
+        lastUpdate = now;
+        if(running && hitNamesSet && hitNamesSet.size>0){
+          hitNamesSet.forEach(function(nm){
+            if(times[nm] === undefined) times[nm] = 0;
+            times[nm] += dt;
+          });
+        }
+      }, 150);
+      uiTimer = setInterval(updateEveningAward, 300);
+    }
+    function stopEngine(){
+      if(engineTimer){ clearInterval(engineTimer); engineTimer = null; }
+      if(uiTimer){ clearInterval(uiTimer); uiTimer = null; }
+    }
+
+    // --- Controls (start/stop/reset)
+    function onToggle(ev){
+      if(ev && ev.preventDefault) ev.preventDefault();
+      if(!running){
+        running=true;
+        toggleBtn.textContent='Стоп'; toggleBtn.className='stop';
+        flame.style.display='block';
+        refreshColumns(); // ensure columns are up-to-date
+        scheduleRandomAngleChange();
+        startEngine();
+      } else {
+        running=false;
+        toggleBtn.textContent='Пуск'; toggleBtn.className='start';
+        flame.style.display='none';
+        cancelRandomAngleChange();
+        stopEngine();
+        updateEveningAward();
+      }
+    }
+    function onReset(ev){
+      if(ev && ev.preventDefault) ev.preventDefault();
+      running=false;
+      flame.style.display='none';
+      cancelRandomAngleChange();
+      stopEngine();
+      particles = [];
+      columns = [];
+      hitNamesSet = new Set();
+      activeNamesSet = new Set();
+      times = {};
+      smokeLabel.textContent='Дышите';
+      namesInput.value = '';
+      names = [];
+      renderNames();
+      eveningAward.textContent='🏆 Самая красивая девушка вечера: —';
+      hideTooltip();
+    }
+
+    function bindControls(){
+      var lastToggle=0, lastReset=0;
+      function safeToggle(ev){
+        try{ if(ev && ev.preventDefault) ev.preventDefault(); }catch(e){}
+        if(Date.now() - lastToggle < 300) return;
+        lastToggle = Date.now();
+        if(ev && ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+        onToggle(ev);
+      }
+      function safeReset(ev){
+        try{ if(ev && ev.preventDefault) ev.preventDefault(); }catch(e){}
+        if(Date.now() - lastReset < 300) return;
+        lastReset = Date.now();
+        if(ev && ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+        onReset(ev);
+      }
+      if(window.PointerEvent){
+        toggleBtn.addEventListener('pointerup', safeToggle, true);
+        resetBtn.addEventListener('pointerup', safeReset, true);
+      } else {
+        toggleBtn.addEventListener('click', safeToggle, true);
+        toggleBtn.addEventListener('touchend', safeToggle, true);
+        resetBtn.addEventListener('click', safeReset, true);
+        resetBtn.addEventListener('touchend', safeReset, true);
+      }
+    }
+
+    // --- Robust init
+    function observeScene(){
+      if (window.ResizeObserver){
+        try{
+          var ro = new ResizeObserver(function(){ sizeSceneToCanvas(); renderNames(); });
+          ro.observe(scene);
+        }catch(e){
+          window.addEventListener('resize', function(){ sizeSceneToCanvas(); renderNames(); }, false);
+          window.addEventListener('orientationchange', function(){ setTimeout(function(){ sizeSceneToCanvas(); renderNames(); }, 60); }, false);
+        }
+      }else{
+        window.addEventListener('resize', function(){ sizeSceneToCanvas(); renderNames(); }, false);
+        window.addEventListener('orientationchange', function(){ setTimeout(function(){ sizeSceneToCanvas(); renderNames(); }, 60); }, false);
+      }
+    }
+
+    function robustInit(){
+      var tries=0;
+      var check=function(){
+        tries++;
+        sizeSceneToCanvas();
+        if (scene.clientWidth>0 && scene.clientHeight>0){
+          observeScene();
+          bindControls();
+          updateNames();
+          animateSmoke();
+        } else if(tries<120){
+          window.requestAnimationFrame(check);
+        } else {
+          scene.style.minHeight = scene.style.minHeight || '420px';
+          sizeSceneToCanvas(); observeScene(); bindControls(); updateNames(); animateSmoke();
+        }
+      };
+      check();
+    }
+
+    // Input handlers
+    namesInput.addEventListener('input', function(){ updateNames(); hideTooltip(); }, false);
+    namesInput.addEventListener('change', function(){ updateNames(); hideTooltip(); }, false);
+
+    // Start
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', robustInit, false);
+    }else{
+      robustInit();
+    }
+    window.addEventListener('load', function(){ sizeSceneToCanvas(); updateNames(); }, false);
+  })();
+  </script>
+</body>
+</html>
